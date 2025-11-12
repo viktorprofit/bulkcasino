@@ -156,7 +156,7 @@
     // Build strips (dup for seamless spinning with absolute offset; no DOM shuffling)
     const reels = [...document.querySelectorAll('.reel')];
     const strips = reels.map(r=>r.querySelector('.strip'));
-    const BASE_LEN = 20; // base symbols per reel
+    const BASE_LEN = 20; // base symbols per reel (must be >= 6 to keep 3 visible safely)
 
     function buildBase(){
       return Array.from({length:BASE_LEN}, ()=>weightedPick());
@@ -208,7 +208,8 @@
     function spinSequence(){
       const finals = [weightedPick(), weightedPick(), weightedPick()];
       const bases = [buildBase(), buildBase(), buildBase()];
-      const targetIdx = [0,0,0].map(()=>Math.floor(Math.random()*BASE_LEN));
+      const MAX_TARGET = BASE_LEN - 3; // ensure we always have top/mid/bottom within duplicated strip
+      const targetIdx = [0,0,0].map(()=>Math.floor(Math.random()*(MAX_TARGET+1)));
       // force finals into base at middle position relative to target
       for(let i=0;i<3;i++){
         bases[i][(targetIdx[i]+1)%BASE_LEN] = finals[i];
