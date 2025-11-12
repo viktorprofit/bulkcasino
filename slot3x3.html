@@ -53,13 +53,6 @@
     .msg.ok{ color:var(--win) } .msg.bad{ color:var(--lose) }
     .foot{ margin-top:10px; text-align:center; color:var(--muted); font-size:13px }
     .foot a{ color:var(--accent); text-decoration:none }
-      /* FX canvas overlay */
-    .window canvas#fx{ position:absolute; inset:0; width:100%; height:100%; pointer-events:none; border-radius:14px }
-
-    /* Виграшні ефекти */
-    @keyframes popGlow{ 0%{transform:scale(1); box-shadow:0 0 0 2px var(--win) inset, 0 0 0 rgba(53,208,127,.0)} 50%{transform:scale(1.06); box-shadow:0 0 0 2px var(--win) inset, 0 0 26px rgba(53,208,127,.55)} 100%{transform:scale(1); box-shadow:0 0 0 2px var(--win) inset, 0 0 0 rgba(53,208,127,.0)} }
-    .cell.win{ outline:2px solid var(--win); box-shadow:0 0 0 2px var(--win) inset, 0 0 20px rgba(53,208,127,.35) }
-    .cell.pop{ animation: popGlow .7s ease } 
   </style>
 </head>
 <body>
@@ -68,7 +61,6 @@
 
     <section class="slot" aria-live="polite">
       <div class="window" id="window">
-        <canvas id="fx"></canvas>
         <div class="midline" aria-hidden="true"></div>
         <!-- 3x3 осередки -->
         <div class="cell" id="c0">🍒</div>
@@ -114,70 +106,6 @@
     const betEl = document.getElementById('bet');
     const msgEl = document.getElementById('msg');
 
-    // FX canvas
-    const winEl = document.getElementById('window');
-    const fx = document.getElementById('fx');
-    const fxc = fx.getContext('2d');
-
-    function resizeFx(){
-      const r = winEl.getBoundingClientRect();
-      fx.width = Math.floor(r.width);
-      fx.height = Math.floor(r.height);
-    }
-    new ResizeObserver(resizeFx).observe(winEl);
-
-    // Звук перемоги через WebAudio
-    let audioCtx;
-    function playWinSound(){
-      try{
-        audioCtx = audioCtx || new (window.AudioContext||window.webkitAudioContext)();
-        const now = audioCtx.currentTime;
-        const gain = audioCtx.createGain();
-        gain.gain.setValueAtTime(0.0001, now);
-        gain.gain.exponentialRampToValueAtTime(0.6, now+0.01);
-        gain.gain.exponentialRampToValueAtTime(0.0001, now+0.6);
-        gain.connect(audioCtx.destination);
-        const notes = [880, 1175, 1568]; // A5, D6#, G6# — приємний апліфтер
-        notes.forEach((freq,i)=>{
-          const o = audioCtx.createOscillator();
-          o.type = i===0? 'triangle' : 'sine';
-          o.frequency.setValueAtTime(freq, now);
-          o.connect(gain);
-          o.start(now + i*0.02);
-          o.stop(now + 0.62 + i*0.02);
-        });
-      }catch(e){ /* без звуку, якщо браузер блокує */ }
-    }
-
-    // Конфеті
-    function confetti(){
-      const W = fx.width, H = fx.height; if(!W||!H) return;
-      const N = 90; // кількість частинок
-      const parts = Array.from({length:N},()=>({
-        x: Math.random()*W,
-        y: -10 - Math.random()*40,
-        vx: (Math.random()-.5)*1.6,
-        vy: 2+Math.random()*3.5,
-        r: 2+Math.random()*3,
-        a: 1
-      }));
-      const start = performance.now();
-      (function tick(t){
-        const dt = Math.min(32, (t - (tick._prev||t)) ); tick._prev = t;
-        fxc.clearRect(0,0,W,H);
-        parts.forEach(p=>{
-          p.x += p.vx; p.y += p.vy; p.vy += 0.02; p.a -= 0.005;
-          fxc.globalAlpha = Math.max(0, p.a);
-          fxc.beginPath();
-          fxc.arc(p.x,p.y,p.r,0,Math.PI*2);
-          fxc.fillStyle = ['#35d07f','#6ee7ff','#e8ecf3','#facc15','#ef4444'][p.r|0 % 5];
-          fxc.fill();
-        });
-        fxc.globalAlpha = 1;
-        if(t - start < 1400) requestAnimationFrame(tick); else fxc.clearRect(0,0,W,H);
-      })(start);
-    }
-
     let balance = 100; // простий демо-баланс
     const bet = 5;
 
@@ -205,9 +133,7 @@
         const mult = sym?.mul || 2;
         const win = bet * mult;
         balance += win;
-        [cells[3],cells[4],cells[5]].forEach(el=>{ el.classList.add('win'); el.classList.add('pop'); setTimeout(()=>el.classList.remove('pop'), 720); });
-        playWinSound();
-        confetti();
+        [cells[3],cells[4],cells[5]].forEach(el=>el.classList.add('win'));
         msgEl.textContent = `Виграш! ${a.repeat(3)} ×${mult} (+${win})`;
         msgEl.className = 'msg ok';
       } else {
