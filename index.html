@@ -1,12 +1,12 @@
 <!DOCTYPE html>
-<html lang="uk">
+<html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Простий Слот 3×3</title>
+  <title>Simple Slot 3×3</title>
   <style>
     :root{
-      --bg:#0f1115; --card:#161a22; --ink:#e8ecf3; --muted:#9aa4b2; --accent:#6ee7ff; --win:#35d07f; --lose:#ef4444;
+      --bg:#0f1115; --card:#161a22; --ink:#e8ecf3; --muted:#9aa4b2; --accent:#6ee7ff; --win:#35d07f; --lose:#ef4444; --chrome:#242a36;
     }
     *{box-sizing:border-box}
     html,body{height:100%}
@@ -14,40 +14,66 @@
       margin:0; display:grid; place-items:center; background:radial-gradient(60% 80% at 50% 40%, #18202e, var(--bg));
       color:var(--ink); font:500 16px/1.3 system-ui, -apple-system, Segoe UI, Roboto, Inter, Arial, sans-serif;
     }
-    .app{ width:min(560px, 94vw); }
+    .app{ width:min(620px, 96vw); }
     .title{ text-align:center; font-weight:700; letter-spacing:.3px; margin:0 0 16px }
 
-    .slot{
+    /* MACHINE */
+    .machine{
+      position:relative;
       background:linear-gradient(180deg, #1c2330, var(--card));
-      border:1px solid #243044; border-radius:20px; padding:20px; box-shadow:0 10px 30px rgba(0,0,0,.35);
+      border:1px solid #243044; border-radius:22px; padding:22px 22px 26px; box-shadow:0 10px 30px rgba(0,0,0,.35);
     }
+    .topper{ display:flex; align-items:center; justify-content:center; gap:10px; margin-bottom:10px; }
+    .topper .icon{ font-size:28px; filter:drop-shadow(0 2px 6px rgba(0,0,0,.35)); }
+    .marquee{ font-weight:800; letter-spacing:.6px; color:#f5f7fb; text-shadow:0 1px 0 #000; }
+
     .window{ 
-      display:grid; grid-template-columns:repeat(3, 1fr); grid-template-rows:repeat(3, 82px); 
-      gap:10px; padding:14px; background:#0b0f16; border-radius:14px; border:1px solid #232c3f; position:relative;
+      position:relative; display:grid; grid-template-columns:repeat(3, 1fr); grid-template-rows:repeat(3, 86px); 
+      gap:10px; padding:14px; background:#0b0f16; border-radius:14px; border:1px solid #232c3f; 
+      box-shadow:inset 0 0 25px rgba(0,0,0,.5);
     }
+    .window.spinning{ filter:saturate(1.1); }
+
     .cell{ 
-      display:grid; place-items:center; font-size:42px; background:#131a26; border-radius:12px; 
+      display:grid; place-items:center; font-size:44px; background:#131a26; border-radius:12px; 
       border:1px solid #253149; box-shadow:inset 0 0 0 1px rgba(255,255,255,0.02);
       transition:transform .15s ease;
+      user-select:none;
     }
     .cell.win{ outline:2px solid var(--win); box-shadow:0 0 0 2px var(--win) inset, 0 0 20px rgba(53,208,127,.35) }
-
     .midline{ position:absolute; inset:auto 10px calc(50% - 1px) 10px; height:2px; background:linear-gradient(90deg, transparent, #3c4b66, transparent) }
 
-    .panel{ display:flex; flex-wrap:wrap; align-items:center; gap:12px; margin-top:16px; justify-content:space-between }
-    .left, .right{ display:flex; align-items:center; gap:10px; flex-wrap:wrap }
+    /* FX canvas overlay */
+    .window canvas#fx{ position:absolute; inset:0; width:100%; height:100%; pointer-events:none; border-radius:14px }
 
+    /* PANEL */
+    .panel{ display:flex; flex-wrap:wrap; align-items:center; gap:12px; margin-top:16px; justify-content:space-between }
+    .left{ display:flex; align-items:center; gap:10px; flex-wrap:wrap }
     .badge{ background:#0b1018; border:1px solid #233149; padding:8px 10px; border-radius:10px; color:var(--muted) }
     .badge b{ color:var(--ink) }
 
-    button{
-      appearance:none; border:0; cursor:pointer; padding:12px 18px; border-radius:12px; font-weight:700; letter-spacing:.2px;
-      background:linear-gradient(180deg, #28bbff, #0da2e7); color:#001420; box-shadow:0 6px 16px rgba(30,171,255,.35);
-      transition:transform .06s ease, filter .2s ease; min-width:122px
+    /* LEVER */
+    .lever{
+      position:absolute; right:-58px; top:38px; width:58px; height:180px; display:grid; place-items:center; cursor:pointer;
+      user-select:none; -webkit-tap-highlight-color:transparent;
     }
-    button:hover{ filter:brightness(1.05) }
-    button:active{ transform:translateY(1px) }
-    button[disabled]{ filter:grayscale(1) brightness(.7); cursor:not-allowed }
+    .lever .stick{
+      width:8px; height:140px; background:linear-gradient(180deg,#53607a,#2c3446); border-radius:6px; box-shadow:inset 0 0 4px rgba(0,0,0,.6);
+      transform-origin:top center; transition:transform .22s ease;
+    }
+    .lever .knob{
+      width:36px; height:36px; background:radial-gradient(circle at 30% 30%, #ff7d7d, #d21f1f); border-radius:50%;
+      border:1px solid #791414; box-shadow:0 8px 18px rgba(0,0,0,.35), inset 0 2px 5px rgba(255,255,255,.25);
+      position:absolute; bottom:0; transform:translateY(8px);
+      transition:transform .22s ease;
+    }
+    .lever.pull .stick{ transform:rotate(20deg); }
+    .lever.pull .knob{ transform:translateY(18px); }
+    .lever.disabled{ pointer-events:none; filter:grayscale(0.6) brightness(.8); }
+
+    /* Win pop animation */
+    @keyframes popGlow{ 0%{transform:scale(1); box-shadow:0 0 0 2px var(--win) inset, 0 0 0 rgba(53,208,127,.0)} 50%{transform:scale(1.06); box-shadow:0 0 0 2px var(--win) inset, 0 0 26px rgba(53,208,127,.55)} 100%{transform:scale(1); box-shadow:0 0 0 2px var(--win) inset, 0 0 0 rgba(53,208,127,.0)} }
+    .cell.pop{ animation: popGlow .7s ease }
 
     .msg{ text-align:center; margin:12px 0 0; color:var(--muted) }
     .msg.ok{ color:var(--win) } .msg.bad{ color:var(--lose) }
@@ -57,12 +83,15 @@
 </head>
 <body>
   <main class="app">
-    <h1 class="title">Слот 3×3 (натисни «Крутити»)</h1>
+    <h1 class="title">Simple Slot 3×3 (pull the lever)</h1>
 
-    <section class="slot" aria-live="polite">
+    <section class="machine" aria-live="polite">
+      <div class="topper"><span class="icon" aria-hidden="true">🎰</span><div class="marquee">LUCKY SPIN</div></div>
+
       <div class="window" id="window">
+        <canvas id="fx"></canvas>
         <div class="midline" aria-hidden="true"></div>
-        <!-- 3x3 осередки -->
+        <!-- 3x3 cells -->
         <div class="cell" id="c0">🍒</div>
         <div class="cell" id="c1">🍋</div>
         <div class="cell" id="c2">🍇</div>
@@ -74,22 +103,24 @@
         <div class="cell" id="c8">🔔</div>
       </div>
 
+      <div class="lever" id="lever" role="button" aria-label="Pull to spin" tabindex="0">
+        <div class="stick"></div>
+        <div class="knob"></div>
+      </div>
+
       <div class="panel">
         <div class="left">
-          <div class="badge">Баланс: <b id="balance">100</b></div>
-          <div class="badge">Ставка: <b id="bet">5</b></div>
-        </div>
-        <div class="right">
-          <button id="spinBtn">Крутити</button>
+          <div class="badge">Balance: <b id="balance">100</b></div>
+          <div class="badge">Bet: <b id="bet">5</b></div>
         </div>
       </div>
-      <p class="msg" id="msg">Виграш по середині 3 в ряд. 💎=x5, ⭐=x3, інші=x2</p>
+      <p class="msg" id="msg">Win is 3-in-a-row on the middle line. 💎×5, ⭐×3, others ×2</p>
     </section>
-    <p class="foot">Made for you. Локальний, без бекенду. Можна змінити емодзі у коді.</p>
+    <p class="foot">Local demo. No backend. Change emojis or multipliers in code if you like.</p>
   </main>
 
   <script>
-    // Символи та ваги (частота випадіння)
+    // Symbols and weights
     const symbols = [
       { ch:'🍒', w:30, mul:2 },
       { ch:'🍋', w:25, mul:2 },
@@ -101,12 +132,17 @@
     ];
 
     const cells = Array.from({length:9}, (_,i)=>document.getElementById('c'+i));
-    const spinBtn = document.getElementById('spinBtn');
     const balanceEl = document.getElementById('balance');
     const betEl = document.getElementById('bet');
     const msgEl = document.getElementById('msg');
 
-    let balance = 100; // простий демо-баланс
+    const winEl = document.getElementById('window');
+    const fx = document.getElementById('fx');
+    const fxc = fx.getContext('2d');
+
+    const lever = document.getElementById('lever');
+
+    let balance = 100; // demo balance
     const bet = 5;
 
     function pickWeighted(){
@@ -133,11 +169,12 @@
         const mult = sym?.mul || 2;
         const win = bet * mult;
         balance += win;
-        [cells[3],cells[4],cells[5]].forEach(el=>el.classList.add('win'));
-        msgEl.textContent = `Виграш! ${a.repeat(3)} ×${mult} (+${win})`;
+        [cells[3],cells[4],cells[5]].forEach(el=>{ el.classList.add('win'); el.classList.add('pop'); setTimeout(()=>el.classList.remove('pop'), 720); });
+        msgEl.textContent = `Win! ${a.repeat(3)} ×${mult} (+${win})`;
         msgEl.className = 'msg ok';
+        playWinSound(); confetti();
       } else {
-        msgEl.textContent = 'Нема виграшу. Спробуй ще!';
+        msgEl.textContent = 'No win. Try again!';
         msgEl.className = 'msg bad';
       }
       balanceEl.textContent = balance;
@@ -145,21 +182,20 @@
 
     function animateSpin(){
       const start = performance.now();
-      const durations = [800, 1000, 1200]; // кожен стовпець зупиняється по черзі
+      const durations = [900, 1100, 1300]; // columns stop sequentially
       const timers = [0,0,0];
 
-      // Знімаємо підсвітку
+      // Clear highlight & set spinning state
       cells.forEach(c=>c.classList.remove('win'));
+      winEl.classList.add('spinning');
 
       return new Promise(resolve=>{
         function frame(t){
           const dt = t - start;
           for(let col=0; col<3; col++){
             if(dt < durations[col]){
-              // оновлюємо відповідний стовпець (3 осередки)
               for(let row=0; row<3; row++){
                 const idx = row*3 + col;
-                // не частіше ніж раз на ~70мс
                 if(t - timers[col] > 70){
                   cells[idx].textContent = pickWeighted().ch;
                 }
@@ -167,34 +203,96 @@
               timers[col] = t;
             }
           }
-          if(dt < Math.max(...durations)) requestAnimationFrame(frame); else resolve();
+          if(dt < Math.max(...durations)) requestAnimationFrame(frame); else { winEl.classList.remove('spinning'); resolve(); }
         }
         requestAnimationFrame(frame);
       });
     }
 
+    // FX sizing
+    function resizeFx(){
+      const r = winEl.getBoundingClientRect();
+      fx.width = Math.floor(r.width); fx.height = Math.floor(r.height);
+    }
+    new ResizeObserver(resizeFx).observe(winEl);
+
+    // WebAudio win sound
+    let audioCtx;
+    function playWinSound(){
+      try{
+        audioCtx = audioCtx || new (window.AudioContext||window.webkitAudioContext)();
+        const now = audioCtx.currentTime;
+        const gain = audioCtx.createGain();
+        gain.gain.setValueAtTime(0.0001, now);
+        gain.gain.exponentialRampToValueAtTime(0.6, now+0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now+0.62);
+        gain.connect(audioCtx.destination);
+        const notes = [880, 1175, 1568];
+        notes.forEach((freq,i)=>{
+          const o = audioCtx.createOscillator();
+          o.type = i===0? 'triangle' : 'sine';
+          o.frequency.setValueAtTime(freq, now);
+          o.connect(gain);
+          o.start(now + i*0.02);
+          o.stop(now + 0.64 + i*0.02);
+        });
+      }catch(e){}
+    }
+
+    // Confetti FX
+    function confetti(){
+      const W = fx.width, H = fx.height; if(!W||!H) return;
+      const N = 90;
+      const parts = Array.from({length:N},()=>({
+        x: Math.random()*W,
+        y: -10 - Math.random()*40,
+        vx: (Math.random()-.5)*1.6,
+        vy: 2+Math.random()*3.5,
+        r: 2+Math.random()*3,
+        a: 1
+      }));
+      const start = performance.now();
+      (function tick(t){
+        fxc.clearRect(0,0,W,H);
+        parts.forEach(p=>{
+          p.x += p.vx; p.y += p.vy; p.vy += 0.02; p.a -= 0.005;
+          fxc.globalAlpha = Math.max(0, p.a);
+          fxc.beginPath();
+          fxc.arc(p.x,p.y,p.r,0,Math.PI*2);
+          fxc.fillStyle = ['#35d07f','#6ee7ff','#e8ecf3','#facc15','#ef4444'][p.r|0 % 5];
+          fxc.fill();
+        });
+        fxc.globalAlpha = 1;
+        if(t - start < 1400) requestAnimationFrame(tick); else fxc.clearRect(0,0,W,H);
+      })(start);
+    }
+
     async function spin(){
-      if(balance < bet){ msgEl.textContent = 'Недостатньо балансу'; msgEl.className='msg bad'; return; }
-      spinBtn.disabled = true;
-      msgEl.textContent = 'Крутиться…'; msgEl.className='msg';
+      if(balance < bet){ msgEl.textContent = 'Not enough balance'; msgEl.className='msg bad'; return; }
+      lever.classList.add('pull'); lever.classList.add('disabled');
+      msgEl.textContent = 'Spinning…'; msgEl.className='msg';
 
       balance -= bet; balanceEl.textContent = balance;
       await animateSpin();
 
-      // фінальні символи для середнього ряду
+      // Final middle row symbols
       const a = pickWeighted(), b = pickWeighted(), c = pickWeighted();
       setMiddleRow(a,b,c);
-      // доб’ємо інші клітинки випадково, щоб виглядало живо
+      // Fill other cells for a lively finish
       for(const i of [0,1,2,6,7,8]) cells[i].textContent = pickWeighted().ch;
 
       evalWin();
-      spinBtn.disabled = false;
+      lever.classList.remove('pull'); lever.classList.remove('disabled');
     }
 
-    spinBtn.addEventListener('click', spin);
-
-    // Ініціалізація
+    // Init
     randomizeAll();
+    resizeFx();
+
+    // Interactions: lever click / keyboard
+    function trySpin(){ if(!lever.classList.contains('disabled')) spin(); }
+    lever.addEventListener('click', trySpin);
+    lever.addEventListener('keydown', (e)=>{ if(e.key==='Enter' || e.key===' '){ e.preventDefault(); trySpin(); } });
   </script>
 </body>
 </html>
